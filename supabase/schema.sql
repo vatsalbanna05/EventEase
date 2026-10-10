@@ -247,6 +247,20 @@ BEGIN
     -- Normalize ticket token
     p_ticket_token := upper(trim(p_ticket_token));
 
+    -- Operator Authorization Check (If operator profile provided, ensure they are not a participant)
+    IF p_checked_in_by IS NOT NULL THEN
+        IF EXISTS (
+            SELECT 1 FROM public.profiles 
+            WHERE id = p_checked_in_by AND role = 'participant'
+        ) THEN
+            RETURN jsonb_build_object(
+                'outcome', 'UNAUTHORIZED',
+                'success', false,
+                'message', 'Security Violation: Participant accounts are not permitted to check in tickets.'
+            );
+        END IF;
+    END IF;
+
     -- Lock and retrieve registration
     SELECT r.*, e.title AS event_title, e.status AS event_status
     INTO v_reg
@@ -272,6 +286,8 @@ BEGIN
             'success', false,
             'message', 'This ticket belongs to another event (' || coalesce(v_event.title, 'Different Event') || ').',
             'ticket_event_id', v_reg.event_id,
+            'ticket_event_title', coalesce(v_event.title, 'Different Event'),
+            'event_title', v_reg.event_title,
             'participant_name', v_reg.participant_name
         );
     END IF;
@@ -282,7 +298,8 @@ BEGIN
             'outcome', 'REGISTRATION_CANCELLED',
             'success', false,
             'message', 'This registration was cancelled and cannot be used for check-in.',
-            'participant_name', v_reg.participant_name
+            'participant_name', v_reg.participant_name,
+            'event_title', v_reg.event_title
         );
     END IF;
 
@@ -292,7 +309,8 @@ BEGIN
             'outcome', 'EVENT_UNAVAILABLE',
             'success', false,
             'message', 'The event has been cancelled. Check-in is not permitted.',
-            'participant_name', v_reg.participant_name
+            'participant_name', v_reg.participant_name,
+            'event_title', v_reg.event_title
         );
     END IF;
 
@@ -309,7 +327,8 @@ BEGIN
             'checked_in_at', v_att.checked_in_at,
             'participant_name', v_reg.participant_name,
             'participant_email', v_reg.participant_email,
-            'ticket_token', v_reg.ticket_token
+            'ticket_token', v_reg.ticket_token,
+            'event_title', v_reg.event_title
         );
     END IF;
 
@@ -364,7 +383,8 @@ BEGIN
         'ticket_token', v_reg.ticket_token,
         'checked_in_at', timezone('utc'::text, now()),
         'attendance_count', v_total_att,
-        'total_registered', v_total_reg
+        'total_registered', v_total_reg,
+        'event_title', v_reg.event_title
     );
 END;
 $$;
@@ -484,3 +504,183 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ==============================================================================
+-- 13. CERTIFICATES, SETTINGS & EARLY-EXIT REQUESTS
+-- ==============================================================================
+
+-- 13.1 Certificates Table
+CREATE TABLE IF NOT EXISTS public.certificates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    registration_id UUID NOT NULL REFERENCES public.registrations(id) ON DELETE CASCADE,
+    event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+    certificate_reference TEXT NOT NULL UNIQUE,
+    eligibility_status TEXT NOT NULL DEFAULT 'issued' CHECK (eligibility_status IN ('eligible', 'issued', 'revoked')),
+    issued_at TIMESTAMPTZ DEFAULT now(),
+    revoked_at TIMESTAMPTZ,
+    revoked_reason TEXT,
+    reissued_at TIMESTAMPTZ,
+    certificate_file_path TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT unique_registration_certificate UNIQUE (registration_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_certificates_ref ON public.certificates(certificate_reference);
+CREATE INDEX IF NOT EXISTS idx_certificates_event ON public.certificates(event_id);
+CREATE INDEX IF NOT EXISTS idx_certificates_reg ON public.certificates(registration_id);
+
+-- 13.2 Certificate Settings & Template Designer Table
+CREATE TABLE IF NOT EXISTS public.certificate_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE UNIQUE,
+    title TEXT NOT NULL DEFAULT 'Certificate of Excellence & Participation',
+    issuing_organization TEXT NOT NULL DEFAULT 'Atmiya University',
+    signatory_name TEXT NOT NULL DEFAULT 'Dr. Rajesh Patel',
+    signatory_role TEXT NOT NULL DEFAULT 'Head of Organizing Committee',
+    requires_checkin BOOLEAN NOT NULL DEFAULT true,
+    eligibility_rule TEXT NOT NULL DEFAULT 'checked_in' CHECK (eligibility_rule IN ('checked_in', 'registered', 'organizer_approved')),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 13.3 Early Exit & Certificate Requests Table
+CREATE TABLE IF NOT EXISTS public.certificate_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    registration_id UUID NOT NULL REFERENCES public.registrations(id) ON DELETE CASCADE,
+    event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+    participant_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    participant_name TEXT NOT NULL,
+    participant_email TEXT NOT NULL,
+    student_id TEXT,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    requested_at TIMESTAMPTZ DEFAULT now(),
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    review_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cert_req_reg ON public.certificate_requests(registration_id);
+CREATE INDEX IF NOT EXISTS idx_cert_req_event ON public.certificate_requests(event_id);
+CREATE INDEX IF NOT EXISTS idx_cert_req_status ON public.certificate_requests(status);
+
+-- 13.4 RLS for Certificate Tables
+ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.certificate_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.certificate_requests ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view certificate credentials for verification
+CREATE POLICY "Public can verify certificate credentials"
+    ON public.certificates FOR SELECT
+    USING (true);
+
+-- Organizers and Admins can manage certificates
+CREATE POLICY "Staff can manage certificates"
+    ON public.certificates FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role IN ('organizer', 'admin', 'volunteer')
+        )
+    );
+
+-- Certificate Settings Policies
+CREATE POLICY "Public can view certificate settings"
+    ON public.certificate_settings FOR SELECT
+    USING (true);
+
+CREATE POLICY "Organizers can configure certificate settings"
+    ON public.certificate_settings FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role IN ('organizer', 'admin')
+        )
+    );
+
+-- Certificate Requests Policies
+CREATE POLICY "Participants can view own requests"
+    ON public.certificate_requests FOR SELECT
+    USING (
+        participant_id = auth.uid() OR
+        participant_email = (SELECT email FROM auth.users WHERE id = auth.uid()) OR
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role IN ('organizer', 'admin', 'volunteer')
+        )
+    );
+
+CREATE POLICY "Participants can submit certificate requests"
+    ON public.certificate_requests FOR INSERT
+    WITH CHECK (true);
+
+CREATE POLICY "Organizers can update certificate requests"
+    ON public.certificate_requests FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role IN ('organizer', 'admin')
+        )
+    );
+
+-- 13.5 RPC: Public Certificate Verification (Privacy Safe: Hides student_id & personal email)
+CREATE OR REPLACE FUNCTION public.verify_certificate_credential(p_reference TEXT)
+RETURNS JSONB AS $$
+DECLARE
+    v_cert RECORD;
+    v_event RECORD;
+    v_reg RECORD;
+    v_settings RECORD;
+BEGIN
+    SELECT * INTO v_cert
+    FROM public.certificates
+    WHERE UPPER(certificate_reference) = UPPER(TRIM(p_reference));
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'status', 'invalid',
+            'message', 'Certificate reference not found. Please verify the credentials.'
+        );
+    END IF;
+
+    SELECT * INTO v_event FROM public.events WHERE id = v_cert.event_id;
+    SELECT * INTO v_reg FROM public.registrations WHERE id = v_cert.registration_id;
+    SELECT * INTO v_settings FROM public.certificate_settings WHERE event_id = v_cert.event_id;
+
+    IF v_cert.eligibility_status = 'revoked' THEN
+        RETURN jsonb_build_object(
+            'status', 'revoked',
+            'message', 'This certificate was revoked by the issuing institution.',
+            'certificate', jsonb_build_object(
+                'certificate_reference', v_cert.certificate_reference,
+                'participant_name', coalesce(v_reg.participant_name, 'Participant'),
+                'event_title', coalesce(v_event.title, 'College Event'),
+                'event_date', v_event.event_date,
+                'issuing_organization', coalesce(v_settings.issuing_organization, 'Atmiya University'),
+                'signatory_name', coalesce(v_settings.signatory_name, 'Dr. Rajesh Patel'),
+                'signatory_role', coalesce(v_settings.signatory_role, 'Head of Organizing Committee'),
+                'issued_at', v_cert.issued_at,
+                'revoked_at', v_cert.revoked_at,
+                'revoked_reason', v_cert.revoked_reason,
+                'eligibility_status', 'revoked'
+            )
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'status', 'valid',
+        'message', 'Certificate is authentic and verified.',
+        'certificate', jsonb_build_object(
+            'certificate_reference', v_cert.certificate_reference,
+            'participant_name', coalesce(v_reg.participant_name, 'Participant'),
+            'event_title', coalesce(v_event.title, 'College Event'),
+            'event_date', v_event.event_date,
+            'issuing_organization', coalesce(v_settings.issuing_organization, 'Atmiya University'),
+            'signatory_name', coalesce(v_settings.signatory_name, 'Dr. Rajesh Patel'),
+            'signatory_role', coalesce(v_settings.signatory_role, 'Head of Organizing Committee'),
+            'issued_at', v_cert.issued_at,
+            'eligibility_status', 'issued'
+        )
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

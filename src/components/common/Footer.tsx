@@ -60,6 +60,9 @@ export const Footer: React.FC = () => {
               <li>
                 <Link to="/certificates" className="hover:text-emerald-400 transition-colors">Certificate Center</Link>
               </li>
+              <li>
+                <Link to="/verify-certificate" className="hover:text-emerald-400 transition-colors">Verify Credential</Link>
+              </li>
             </ul>
           </div>
 

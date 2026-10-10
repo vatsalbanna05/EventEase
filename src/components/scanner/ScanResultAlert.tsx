@@ -8,7 +8,9 @@ import {
   User,
   Mail,
   Hash,
-  Sparkles
+  Sparkles,
+  Calendar,
+  Lock
 } from 'lucide-react';
 import { ScanResult, ScanOutcome } from '../../types';
 
@@ -78,6 +80,14 @@ export const ScanResultAlert: React.FC<ScanResultAlertProps> = ({ result, onClea
       title: 'EVENT UNAVAILABLE — CHECK-IN CLOSED',
       icon: <Clock className="w-8 h-8 text-slate-600" />,
       badgeBg: 'bg-slate-600 text-white'
+    },
+    UNAUTHORIZED: {
+      bg: 'bg-red-500/10',
+      border: 'border-red-500/50 ring-2 ring-red-500/20',
+      text: 'text-red-900',
+      title: 'ACCESS DENIED — OPERATOR UNAUTHORIZED',
+      icon: <Lock className="w-8 h-8 text-red-600" />,
+      badgeBg: 'bg-red-600 text-white'
     }
   };
 
@@ -95,6 +105,8 @@ export const ScanResultAlert: React.FC<ScanResultAlertProps> = ({ result, onClea
       return isoString;
     }
   };
+
+  const eventName = result.event_title || result.ticket_event_title;
 
   return (
     <div
@@ -130,12 +142,21 @@ export const ScanResultAlert: React.FC<ScanResultAlertProps> = ({ result, onClea
           {result.message}
         </p>
 
-        {result.participant_name && (
+        {(result.participant_name || eventName) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-xs bg-white/70 p-3.5 rounded-xl border border-black/5">
-            <div className="flex items-center gap-2 text-slate-700">
-              <User className="w-4 h-4 text-slate-500" />
-              <span>Attendee: <strong className="text-slate-900">{result.participant_name}</strong></span>
-            </div>
+            {result.participant_name && (
+              <div className="flex items-center gap-2 text-slate-700">
+                <User className="w-4 h-4 text-slate-500" />
+                <span>Attendee: <strong className="text-slate-900">{result.participant_name}</strong></span>
+              </div>
+            )}
+
+            {eventName && (
+              <div className="flex items-center gap-2 text-slate-700">
+                <Calendar className="w-4 h-4 text-emerald-600" />
+                <span className="truncate">Event: <strong className="text-slate-900">{eventName}</strong></span>
+              </div>
+            )}
 
             {result.participant_email && (
               <div className="flex items-center gap-2 text-slate-700">
@@ -152,7 +173,7 @@ export const ScanResultAlert: React.FC<ScanResultAlertProps> = ({ result, onClea
             )}
 
             {result.checked_in_at && (
-              <div className="flex items-center gap-2 text-slate-700">
+              <div className="flex items-center gap-2 text-slate-700 sm:col-span-2">
                 <Clock className="w-4 h-4 text-slate-500" />
                 <span>Recorded Time: <strong className="text-slate-900">{formatTime(result.checked_in_at)}</strong></span>
               </div>

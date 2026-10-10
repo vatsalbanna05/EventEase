@@ -17,6 +17,46 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
   const readerElementId = 'qr-reader-viewport';
   const lastScannedTimeRef = useRef<number>(0);
 
+  const requestCameraPermission = async () => {
+    setCameraError(null);
+    try {
+      if (navigator?.mediaDevices?.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+          });
+          // Release test stream immediately after permission grant
+          stream.getTracks().forEach((track) => track.stop());
+        } catch (permErr: any) {
+          if (permErr?.name === 'NotAllowedError' || permErr?.name === 'PermissionDeniedError') {
+            setCameraError('Camera permission was blocked. Please enable camera access in your browser site settings or use manual pass reference entry below.');
+            return;
+          }
+        }
+      }
+
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        const deviceList = devices.map((d, index) => ({
+          id: d.id,
+          label: d.label || `Camera ${index + 1}`
+        }));
+        setCameras(deviceList);
+        const backCam = deviceList.find(
+          (c) => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('environment')
+        );
+        const preferredId = backCam ? backCam.id : deviceList[0].id;
+        setSelectedCamera(preferredId);
+        startScanner(preferredId);
+      } else {
+        setCameraError('No camera devices detected on this device. Please use manual ticket entry below.');
+      }
+    } catch (err: any) {
+      console.warn('Camera request error:', err);
+      setCameraError('Camera access unavailable. Please use the manual pass reference entry below.');
+    }
+  };
+
   // Discover cameras on mount
   useEffect(() => {
     Html5Qrcode.getCameras()
@@ -27,16 +67,17 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
             label: d.label || `Camera ${index + 1}`
           }));
           setCameras(deviceList);
-          // Prefer environment (back) camera if found
-          const backCam = deviceList.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('environment'));
+          const backCam = deviceList.find(
+            (c) => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('environment')
+          );
           setSelectedCamera(backCam ? backCam.id : deviceList[0].id);
         } else {
-          setCameraError('No camera devices detected on this device.');
+          setCameraError('No camera devices detected. You can enter pass references manually below.');
         }
       })
       .catch((err) => {
         console.warn('Camera discovery error:', err);
-        setCameraError('Camera access unavailable or permission was not granted.');
+        setCameraError('Camera permission needed. Click "Allow Camera" or use manual entry below.');
       });
 
     return () => {
@@ -47,7 +88,7 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
   const startScanner = async (cameraId?: string) => {
     const camId = cameraId || selectedCamera;
     if (!camId) {
-      setCameraError('No camera selected');
+      requestCameraPermission();
       return;
     }
 
@@ -86,7 +127,7 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
       );
     } catch (err: any) {
       console.error('Failed to start scanner:', err);
-      setCameraError(err?.message || 'Unable to access camera. Please grant camera permissions in your browser.');
+      setCameraError(err?.message || 'Unable to access camera. Please allow camera permissions in your browser or use manual token entry.');
       setIsScanning(false);
     }
   };
@@ -138,24 +179,26 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
 
         {/* Fallback Error / Idle view */}
         {(!isScanning || cameraError) && (
-          <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-6 text-center text-slate-300">
+          <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-6 text-center text-slate-300">
             {cameraError ? (
               <div className="space-y-3">
                 <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
-                <p className="text-xs text-rose-300">{cameraError}</p>
-                <button
-                  onClick={() => startScanner()}
-                  className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 transition-colors"
-                >
-                  Retry Camera
-                </button>
+                <p className="text-xs text-rose-200 leading-relaxed max-w-xs">{cameraError}</p>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    onClick={() => requestCameraPermission()}
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold text-white transition-colors"
+                  >
+                    Allow / Retry Camera
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
                 <Camera className="w-12 h-12 text-slate-500 mx-auto" />
                 <p className="text-xs text-slate-400">Camera is currently paused or inactive.</p>
                 <button
-                  onClick={() => startScanner()}
+                  onClick={() => requestCameraPermission()}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-xs transition-colors"
                 >
                   Start Camera Scanner

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   QrCode,
   Camera,
@@ -13,6 +13,11 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  ShieldAlert,
+  Lock,
+  Calendar,
+  TrendingUp,
+  UserCheck,
   Zap
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -23,10 +28,74 @@ import { useToast } from '../context/ToastContext';
 import { QRCameraScanner } from '../components/scanner/QRCameraScanner';
 import { ScanResultAlert } from '../components/scanner/ScanResultAlert';
 
+// Audio feedback chime using Web Audio API
+const playFeedbackSound = (type: 'success' | 'duplicate' | 'error') => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'success') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.35);
+    } else if (type === 'duplicate') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.setValueAtTime(330, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.4);
+    } else {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    }
+  } catch {
+    // Ignore if audio is restricted by browser policy
+  }
+};
+
+// Robust extractor for QR codes containing URLs, JSON, or plain tokens
+const extractTicketToken = (raw: string): string => {
+  let cleaned = raw.trim();
+  const eeMatch = cleaned.match(/\b(EE-[A-Za-z0-9]+)\b/i);
+  if (eeMatch) return eeMatch[1].toUpperCase();
+
+  if (cleaned.includes('token=')) {
+    const match = cleaned.match(/token=([A-Za-z0-9_-]+)/i);
+    if (match) return match[1].toUpperCase();
+  }
+
+  if (cleaned.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.ticket_token) return String(parsed.ticket_token).toUpperCase();
+      if (parsed.token) return String(parsed.token).toUpperCase();
+    } catch {}
+  }
+
+  return cleaned.toUpperCase();
+};
+
 export const QRScannerPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const { user, role } = useAuth();
-  const { success, warning, error, info } = useToast();
+  const { user, role, switchDemoRole } = useAuth();
+  const { success, warning, error } = useToast();
+
+  const isAuthorizedStaff = role === 'organizer' || role === 'volunteer' || role === 'admin';
 
   const [events, setEvents] = useState<CollegeEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
@@ -72,7 +141,7 @@ export const QRScannerPage: React.FC = () => {
       // Set recent check-ins sorted by check-in time desc
       const sortedCheckedIns = checkedIns
         .sort((a, b) => new Date(b.checked_in_at || 0).getTime() - new Date(a.checked_in_at || 0).getTime())
-        .slice(0, 5);
+        .slice(0, 6);
 
       setRecentAttendees(sortedCheckedIns);
     } catch (err) {
@@ -86,13 +155,26 @@ export const QRScannerPage: React.FC = () => {
     }
   }, [selectedEventId]);
 
+  const selectedEvent = events.find(e => e.id === selectedEventId);
+
   const handleProcessToken = async (rawToken: string) => {
     if (!selectedEventId) {
       warning('Select Event', 'Please select an event before scanning tickets.');
       return;
     }
 
-    const cleanToken = rawToken.trim().toUpperCase();
+    if (!isAuthorizedStaff) {
+      playFeedbackSound('error');
+      error('Access Denied', 'Only authorized organizers and gate volunteers can verify tickets.');
+      setLastScanResult({
+        outcome: 'UNAUTHORIZED',
+        success: false,
+        message: 'Security Restriction: Your current session is a Participant. Switch to Organizer or Volunteer mode to operate the check-in scanner.'
+      });
+      return;
+    }
+
+    const cleanToken = extractTicketToken(rawToken);
     if (!cleanToken) return;
 
     setIsVerifying(true);
@@ -104,10 +186,15 @@ export const QRScannerPage: React.FC = () => {
         checkedInBy: user?.id
       });
 
+      if (!result.event_title && selectedEvent?.title) {
+        result.event_title = selectedEvent.title;
+      }
+
       setLastScanResult(result);
       setIsVerifying(false);
 
       if (result.outcome === 'VALID_TICKET') {
+        playFeedbackSound('success');
         success('CHECK-IN SUCCESSFUL!', result.message);
         try {
           confetti({
@@ -119,27 +206,33 @@ export const QRScannerPage: React.FC = () => {
           // ignore
         }
       } else if (result.outcome === 'ALREADY_CHECKED_IN') {
+        playFeedbackSound('duplicate');
         warning('DUPLICATE REJECTED', result.message);
       } else {
+        playFeedbackSound('error');
         error(result.outcome.replace(/_/g, ' '), result.message);
       }
 
       await refreshEventStats(selectedEventId);
     } catch (err: any) {
       setIsVerifying(false);
+      playFeedbackSound('error');
       error('System Error', err.message || 'Failed to verify ticket.');
     }
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (manualToken) {
+    if (manualToken.trim()) {
       handleProcessToken(manualToken);
       setManualToken('');
     }
   };
 
-  const selectedEvent = events.find(e => e.id === selectedEventId);
+  const pendingCount = Math.max(0, currentEventAttendance.total - currentEventAttendance.checkedIn);
+  const turnoutRate = currentEventAttendance.total > 0
+    ? Math.round((currentEventAttendance.checkedIn / currentEventAttendance.total) * 100)
+    : 0;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -154,25 +247,59 @@ export const QRScannerPage: React.FC = () => {
             QR Check-In Scanner
           </h1>
           <p className="text-xs text-slate-600 mt-1">
-            Live atomic ticket token verification for authorized volunteers & organizers.
+            Real-time atomic pass verification and duplicate prevention for authorized organizers & gate staff.
           </p>
         </div>
 
-        {/* Current Event Attendance Pill */}
+        {/* Live Attendance 4-Stat Badges */}
         {selectedEvent && (
-          <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-              <Users className="w-5 h-5" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full sm:w-auto">
+            <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs text-center min-w-[75px]">
+              <div className="text-[10px] uppercase font-bold text-slate-400">Registered</div>
+              <div className="text-sm font-extrabold text-slate-900 font-display">{currentEventAttendance.total}</div>
             </div>
-            <div>
-              <div className="text-[10px] uppercase font-bold text-slate-400">Current Check-Ins</div>
-              <div className="text-base font-extrabold text-slate-900 font-display">
-                <span className="text-emerald-600">{currentEventAttendance.checkedIn}</span> / {currentEventAttendance.total} Attended
-              </div>
+            <div className="p-2.5 bg-white rounded-xl border border-emerald-200 bg-emerald-50/40 shadow-xs text-center min-w-[75px]">
+              <div className="text-[10px] uppercase font-bold text-emerald-600">Checked In</div>
+              <div className="text-sm font-extrabold text-emerald-600 font-display">{currentEventAttendance.checkedIn}</div>
+            </div>
+            <div className="p-2.5 bg-white rounded-xl border border-amber-200 bg-amber-50/40 shadow-xs text-center min-w-[75px]">
+              <div className="text-[10px] uppercase font-bold text-amber-600">Pending</div>
+              <div className="text-sm font-extrabold text-amber-600 font-display">{pendingCount}</div>
+            </div>
+            <div className="p-2.5 bg-white rounded-xl border border-teal-200 bg-teal-50/40 shadow-xs text-center min-w-[75px]">
+              <div className="text-[10px] uppercase font-bold text-teal-600">Turnout</div>
+              <div className="text-sm font-extrabold text-teal-600 font-display">{turnoutRate}%</div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Role Restriction Banner if Participant */}
+      {!isAuthorizedStaff && (
+        <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-2.5 text-amber-900">
+            <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <strong className="block text-slate-900 font-bold">Restricted Gate Terminal</strong>
+              Your account is currently set as a <span className="font-semibold underline">Participant</span>. Only authorized Organizers and Volunteers can scan and check in attendees.
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => switchDemoRole('volunteer')}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-xs transition-colors"
+            >
+              Switch to Volunteer
+            </button>
+            <button
+              onClick={() => switchDemoRole('organizer')}
+              className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-800 shadow-xs transition-colors"
+            >
+              Switch to Organizer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Event Selector Toolbar */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -201,12 +328,13 @@ export const QRScannerPage: React.FC = () => {
             <div>
               <span className="font-semibold text-slate-700">Time:</span> {selectedEvent.start_time} - {selectedEvent.end_time}
             </div>
-            <div>
-              <span className="font-semibold text-slate-700">Status:</span>{' '}
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                {selectedEvent.status.toUpperCase()}
-              </span>
-            </div>
+            <Link
+              to={`/organizer/attendance?eventId=${selectedEvent.id}`}
+              className="inline-flex items-center gap-1 font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Open Roster</span>
+            </Link>
           </div>
         )}
       </div>

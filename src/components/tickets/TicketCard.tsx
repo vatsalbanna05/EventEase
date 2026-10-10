@@ -12,19 +12,29 @@ import {
   ShieldCheck,
   User,
   Hash,
-  Loader2
+  Loader2,
+  Award
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { Registration } from '../../types';
+import { Registration, CertificateRequest } from '../../types';
 import { useToast } from '../../context/ToastContext';
 
 interface TicketCardProps {
   registration: Registration;
   onCancel?: (registrationId: string) => void;
+  certificateRequest?: CertificateRequest;
+  onRequestCertificate?: (registration: Registration) => void;
+  onViewCertificate?: (certificateRef: string) => void;
 }
 
-export const TicketCard: React.FC<TicketCardProps> = ({ registration, onCancel }) => {
+export const TicketCard: React.FC<TicketCardProps> = ({
+  registration,
+  onCancel,
+  certificateRequest,
+  onRequestCertificate,
+  onViewCertificate
+}) => {
   const { success, error } = useToast();
   const ticketRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -95,23 +105,42 @@ export const TicketCard: React.FC<TicketCardProps> = ({ registration, onCancel }
               {event?.category || 'College Event'}
             </span>
 
-            {/* Check-In Status Tag */}
-            {isCancelled ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
-                <XCircle className="w-3.5 h-3.5" />
-                Cancelled
-              </span>
-            ) : isCheckedIn ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Checked In
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                Pending Check-In
-              </span>
-            )}
+            {/* Status Tags */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {isCancelled ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
+                  <XCircle className="w-3.5 h-3.5" />
+                  Cancelled
+                </span>
+              ) : isCheckedIn ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Checked In
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  Pending Gate Check-In
+                </span>
+              )}
+
+              {registration.certificate_reference ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                  <Award className="w-3.5 h-3.5 text-amber-600" />
+                  Certificate Ready
+                </span>
+              ) : certificateRequest?.status === 'pending' ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  Cert Request: Pending
+                </span>
+              ) : certificateRequest?.status === 'rejected' ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                  <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                  Cert Request: Declined
+                </span>
+              ) : null}
+            </div>
           </div>
 
           <div>
@@ -178,7 +207,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({ registration, onCancel }
 
       {/* Ticket Footer Actions */}
       <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleDownloadPDF}
             disabled={isDownloading}
@@ -195,6 +224,34 @@ export const TicketCard: React.FC<TicketCardProps> = ({ registration, onCancel }
             <Printer className="w-3.5 h-3.5 text-slate-500" />
             <span>Print</span>
           </button>
+
+          {/* Certificate Action Buttons */}
+          {registration.certificate_reference ? (
+            <button
+              onClick={() => onViewCertificate?.(registration.certificate_reference!)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-xs transition-colors"
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>View Certificate</span>
+            </button>
+          ) : !isCancelled && onRequestCertificate && (
+            <button
+              onClick={() => onRequestCertificate(registration)}
+              disabled={certificateRequest?.status === 'pending'}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold shadow-xs transition-colors ${
+                certificateRequest?.status === 'pending'
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300 opacity-80 cursor-not-allowed'
+                  : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5 text-amber-700" />
+              <span>
+                {certificateRequest?.status === 'pending'
+                  ? 'Request Pending Review'
+                  : 'Request Certificate'}
+              </span>
+            </button>
+          )}
         </div>
 
         {!isCheckedIn && !isCancelled && onCancel && (

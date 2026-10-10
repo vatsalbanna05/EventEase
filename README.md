@@ -169,7 +169,7 @@ Follow this exact scenario designed for Code Carnival 3.0 PS-03 evaluators:
 
 ## 🧪 Automated Testing
 
-To run the automated security and business logic verification suite:
+To run the automated security, business logic, analytics, reports, and notification verification suite:
 ```bash
 node tests/test_eventease.js
 ```
@@ -179,20 +179,13 @@ node tests/test_eventease.js
 ===============================================================
 EVENT-EASE TEST SUITE: Code Carnival 3.0 (Problem Statement PS-03)
 ===============================================================
-[PASS] 1. Event Creation with Capacity = 3
-[PASS] 2. Participant Registration (Rahul Patel) & Token Generation
-[PASS] 3. Duplicate Registration Rejected for Same Email
-[PASS] 4. Fill Capacity to 3/3
-[PASS] 5. Registration Blocked when Capacity is Full (3/3)
-[PASS] 6. Scan 1: VALID TICKET — Check-in Successful & Attendance = 1
-[PASS] 7. Scan 2: DUPLICATE ENTRY REJECTED — Already Checked In
-[PASS] 8. Attendance Count Preserved at Exactly 1 (No inflation)
-[PASS] 9. Invalid/Counterfeit Token Rejected
-[PASS] 10. Ticket for Another Event Rejected (WRONG_EVENT)
-[PASS] 11. Cancelled Registration Rejected (REGISTRATION_CANCELLED)
-[PASS] 12. Certificate Issued for Verified Attendee
+[PASS] 1-18.  Core Workflow (Creation, Capacity, Anti-Duplicate Registration & Scan)
+[PASS] 19-32. Digital Certificate Lifecycle (Eligibility, Requests, Revoke/Reissue & Verification)
+[PASS] 33-42. Live Analytics Dashboard (KPIs, Charts, Zero-Capacity Safety & Telemetry)
+[PASS] 43-52. Multi-Format Export Reports (CSV RFC 4180 BOM, PDF, Filters, Deduplication)
+[PASS] 53-57. In-App Notifications (Registration, Updates, Privacy, Read Status)
 ===============================================================
-TOTAL TESTS: 12 | PASSED: 12 | FAILED: 0
+TOTAL TESTS: 57 | PASSED: 57 | FAILED: 0
 ===============================================================
 ```
 

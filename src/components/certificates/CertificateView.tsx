@@ -73,6 +73,16 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate })
           <Award className="w-9 h-9" />
         </div>
 
+        {certificate.eligibility_status === 'revoked' && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-rose-950/20 pointer-events-none">
+            <div className="rotate-[-25deg] border-8 border-rose-600 px-10 py-3 rounded-2xl bg-white/90 shadow-2xl">
+              <span className="text-4xl sm:text-5xl font-black uppercase tracking-widest text-rose-600">
+                REVOKED CREDENTIAL
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Institution Title */}
         <h2 className="text-xl sm:text-2xl font-extrabold uppercase tracking-widest text-emerald-950 font-display">
           {certificate.issuing_organization || 'Atmiya University'}
@@ -89,8 +99,11 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate })
         </div>
 
         <p className="text-sm text-slate-700 max-w-2xl mx-auto leading-relaxed">
-          in recognition of their successful registration, verified attendance, and active participation in the event{' '}
-          <strong className="text-emerald-950 font-bold">"{certificate.event_title}"</strong> conducted with high academic and technical standards.
+          in recognition of their successful registration, active participation, and completion of the event{' '}
+          <strong className="text-emerald-950 font-bold">"{certificate.event_title}"</strong>
+          {certificate.event_date ? (
+            <span> held on <strong className="text-slate-900">{new Date(certificate.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</strong></span>
+          ) : ''}.
         </p>
 
         {/* Signatures and Verification Badges */}
@@ -107,16 +120,19 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate })
             <p className="text-[10px] text-slate-500">Event Steering Committee</p>
           </div>
 
-          {/* Verification Badge */}
+          {/* Verification Badge & Issue Date */}
           <div className="flex flex-col items-center">
             <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mb-1">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800">
-              Official Blockchain-Verifiable Record
+              Official Verifiable Credential
             </span>
-            <span className="font-mono text-[9px] text-slate-500 mt-0.5">
-              Ref: {certificate.certificate_reference}
+            <span className="font-mono text-[9px] text-slate-600 mt-0.5">
+              ID: {certificate.certificate_reference}
+            </span>
+            <span className="text-[9px] text-slate-400 mt-0.5">
+              Issued: {certificate.issued_at ? new Date(certificate.issued_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Verified'}
             </span>
           </div>
 
@@ -124,7 +140,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({ certificate })
           <div className="flex flex-col items-center sm:items-end">
             <div className="bg-white p-1.5 rounded-lg border border-slate-200 shadow-xs">
               <QRCodeSVG
-                value={`https://eventease.atmiya.edu/verify/${certificate.certificate_reference}`}
+                value={typeof window !== 'undefined' ? `${window.location.origin}/verify-certificate/${certificate.certificate_reference}` : `https://eventease.atmiya.edu/verify/${certificate.certificate_reference}`}
                 size={64}
                 level="M"
               />

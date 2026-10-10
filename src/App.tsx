@@ -18,6 +18,7 @@ import { CreateEventPage } from './pages/CreateEventPage';
 import { ManageEventsPage } from './pages/ManageEventsPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { CertificateCenterPage } from './pages/CertificateCenterPage';
+import { VerifyCertificatePage } from './pages/VerifyCertificatePage';
 import { ProfilePage } from './pages/ProfilePage';
 
 export const App: React.FC = () => {
@@ -45,6 +46,9 @@ export const App: React.FC = () => {
                 <Route path="/organizer/events" element={<ManageEventsPage />} />
                 <Route path="/organizer/attendance" element={<AttendancePage />} />
                 <Route path="/certificates" element={<CertificateCenterPage />} />
+                <Route path="/verify-certificate" element={<VerifyCertificatePage />} />
+                <Route path="/verify-certificate/:reference" element={<VerifyCertificatePage />} />
+                <Route path="/verify/:reference" element={<VerifyCertificatePage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

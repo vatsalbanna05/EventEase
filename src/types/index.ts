@@ -88,6 +88,9 @@ export interface Certificate {
   certificate_reference: string;
   eligibility_status: CertificateEligibility;
   issued_at?: string;
+  revoked_at?: string;
+  revoked_reason?: string;
+  reissued_at?: string;
   certificate_file_path?: string;
   created_at: string;
   // Joined
@@ -99,6 +102,8 @@ export interface Certificate {
   signatory_role?: string;
 }
 
+export type EligibilityRule = 'checked_in' | 'registered' | 'organizer_approved';
+
 export interface CertificateSettings {
   id: string;
   event_id: string;
@@ -107,7 +112,49 @@ export interface CertificateSettings {
   signatory_name: string;
   signatory_role: string;
   requires_checkin: boolean;
+  eligibility_rule?: EligibilityRule;
   created_at?: string;
+}
+
+export type CertificateRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CertificateRequest {
+  id: string;
+  registration_id: string;
+  event_id: string;
+  participant_id?: string;
+  participant_name: string;
+  participant_email: string;
+  student_id?: string;
+  reason: string;
+  status: CertificateRequestStatus;
+  requested_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  review_notes?: string;
+  // Joined
+  event_title?: string;
+  event_date?: string;
+  ticket_token?: string;
+  has_checked_in?: boolean;
+}
+
+export interface CertificateVerificationResult {
+  status: 'valid' | 'revoked' | 'invalid';
+  message: string;
+  certificate?: {
+    certificate_reference: string;
+    participant_name: string;
+    event_title: string;
+    event_date?: string;
+    issuing_organization: string;
+    signatory_name: string;
+    signatory_role: string;
+    issued_at?: string;
+    revoked_at?: string;
+    revoked_reason?: string;
+    eligibility_status: CertificateEligibility;
+  };
 }
 
 export type ScanOutcome = 
@@ -116,7 +163,8 @@ export type ScanOutcome =
   | 'INVALID_TICKET'
   | 'WRONG_EVENT'
   | 'REGISTRATION_CANCELLED'
-  | 'EVENT_UNAVAILABLE';
+  | 'EVENT_UNAVAILABLE'
+  | 'UNAUTHORIZED';
 
 export interface ScanResult {
   outcome: ScanOutcome;
@@ -129,6 +177,7 @@ export interface ScanResult {
   checked_in_at?: string;
   attendance_count?: number;
   total_registered?: number;
+  event_title?: string;
   ticket_event_id?: string;
   ticket_event_title?: string;
 }
@@ -140,14 +189,95 @@ export interface RegistrationResult {
   registration?: Registration;
 }
 
+export interface EventPerformanceMetric {
+  event_id: string;
+  event_title: string;
+  category: EventCategory;
+  capacity: number;
+  registered: number;
+  checked_in: number;
+  not_checked_in: number;
+  available_seats: number;
+  registration_rate: number;
+  attendance_rate: number;
+}
+
 export interface DashboardStats {
   total_events: number;
   upcoming_events: number;
+
+  // 1. Registration Statistics
   total_registrations: number;
-  total_checkins: number;
-  overall_attendance_rate: number;
   total_capacity: number;
-  recent_registrations: Registration[];
+  available_seats: number;
+  registration_percentage: number;
+
+  // 2. Attendance Statistics
+  total_checkins: number;
+  not_checked_in: number;
+  attendance_percentage: number;
+  overall_attendance_rate: number;
+
+  // 3. Certificate Statistics
+  certificates_issued: number;
+  pending_certificate_requests: number;
+  approved_certificate_requests: number;
+  rejected_certificate_requests: number;
+
+  // 4. Event Performance Charts & Breakdown
+  event_performance: EventPerformanceMetric[];
+  highest_participation_events: EventPerformanceMetric[];
   category_distribution: { category: string; count: number; registrations: number }[];
   attendance_trend: { event_title: string; registered: number; checked_in: number; capacity: number }[];
+  recent_registrations: Registration[];
 }
+
+export type ReportType = 'participant' | 'attendance' | 'certificate';
+
+export interface ReportFilterOptions {
+  organizerId?: string;
+  eventId?: string;
+  registrationStatus?: 'all' | 'confirmed' | 'cancelled' | 'waitlisted';
+  attendanceStatus?: 'all' | 'checked_in' | 'not_checked_in';
+  reportType: ReportType;
+}
+
+export interface ReportItem {
+  id: string;
+  registration_id: string;
+  event_id: string;
+  event_title: string;
+  event_date: string;
+  venue?: string;
+  participant_name: string;
+  participant_email: string;
+  student_id?: string;
+  ticket_token: string;
+  registration_status: RegistrationStatus;
+  registered_at: string;
+  has_checked_in: boolean;
+  checked_in_at?: string;
+  certificate_reference?: string;
+  certificate_status?: string;
+  certificate_issued_at?: string;
+}
+
+// ==========================================
+// NOTIFICATIONS
+// ==========================================
+export type NotificationType = 'registration' | 'event_update' | 'certificate' | 'system';
+
+export interface AppNotification {
+  id: string;
+  user_email: string;
+  user_id?: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  read: boolean;
+  link?: string;
+  created_at: string;
+}
+
+
+
