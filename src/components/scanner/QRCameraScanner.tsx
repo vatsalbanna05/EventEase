@@ -35,7 +35,7 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
         }
       }
 
-      const devices = await Html5Qrcode.getCameras();
+      const devices = await Html5Qrcode.getCameras().catch(() => []);
       if (devices && devices.length > 0) {
         const deviceList = devices.map((d, index) => ({
           id: d.id,
@@ -49,11 +49,13 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
         setSelectedCamera(preferredId);
         startScanner(preferredId);
       } else {
-        setCameraError('No camera devices detected on this device. Please use manual ticket entry below.');
+        // Fallback for mobile devices where enumeration is restricted before start
+        startScanner();
       }
     } catch (err: any) {
       console.warn('Camera request error:', err);
-      setCameraError('Camera access unavailable. Please use the manual pass reference entry below.');
+      // Fallback: try starting directly with facingMode: environment
+      startScanner();
     }
   };
 
@@ -70,14 +72,23 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
           const backCam = deviceList.find(
             (c) => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('environment')
           );
-          setSelectedCamera(backCam ? backCam.id : deviceList[0].id);
+          const prefId = backCam ? backCam.id : deviceList[0].id;
+          setSelectedCamera(prefId);
+          if (isActive) {
+            startScanner(prefId);
+          }
         } else {
-          setCameraError('No camera devices detected. You can enter pass references manually below.');
+          // On mobile Safari/Chrome, cameras list is empty before permission grant
+          if (isActive) {
+            startScanner();
+          }
         }
       })
       .catch((err) => {
         console.warn('Camera discovery error:', err);
-        setCameraError('Camera permission needed. Click "Allow Camera" or use manual entry below.');
+        if (isActive) {
+          startScanner();
+        }
       });
 
     return () => {
@@ -86,12 +97,6 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
   }, []);
 
   const startScanner = async (cameraId?: string) => {
-    const camId = cameraId || selectedCamera;
-    if (!camId) {
-      requestCameraPermission();
-      return;
-    }
-
     try {
       if (scannerRef.current) {
         await stopScanner();
@@ -106,11 +111,21 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
       setCameraError(null);
       setIsScanning(true);
 
+      // On mobile browsers, if no camera id is chosen, pass { facingMode: 'environment' }
+      const cameraConfig: any = cameraId || selectedCamera || { facingMode: 'environment' };
+
       await html5QrCode.start(
-        camId,
+        cameraConfig,
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const edge = Math.floor(minEdge * 0.72);
+            return {
+              width: Math.max(edge, 160),
+              height: Math.max(edge, 160),
+            };
+          },
           aspectRatio: 1.0,
         },
         (decodedText) => {
@@ -146,7 +161,7 @@ export const QRCameraScanner: React.FC<QRCameraScannerProps> = ({ onScanSuccess,
   };
 
   useEffect(() => {
-    if (isActive && selectedCamera && !isScanning) {
+    if (isActive && !isScanning) {
       startScanner(selectedCamera);
     } else if (!isActive && isScanning) {
       stopScanner();

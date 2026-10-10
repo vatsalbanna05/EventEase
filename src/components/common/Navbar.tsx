@@ -77,17 +77,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenDemoGuide }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       {/* Top University Banner & Role Switcher Ticker */}
-      <div className="bg-slate-900 text-slate-200 text-xs py-1.5 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+      <div className="bg-slate-900 text-slate-200 text-xs py-1.5 px-3 sm:px-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
               Code Carnival 3.0
             </span>
             <span className="hidden sm:inline text-slate-400">|</span>
-            <span className="font-medium text-slate-300">Atmiya University — Problem Statement PS-03</span>
+            <span className="hidden sm:inline font-medium text-slate-300 truncate">Atmiya University — Problem Statement PS-03</span>
           </div>
 
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-2 ml-auto">
             {/* Quick Role Switcher */}
             <div className="relative">
               <button
@@ -134,7 +134,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenDemoGuide }) => {
             {onOpenDemoGuide && (
               <button
                 onClick={onOpenDemoGuide}
-                className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition-colors shadow-xs"
+                className="hidden xs:flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition-colors shadow-xs"
               >
                 <Play className="w-3 h-3 fill-current" />
                 <span>Demo Walkthrough</span>
@@ -281,98 +281,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenDemoGuide }) => {
 
             {/* Notification Bell Component */}
             {isAuthenticated && (
-              <div className="relative">
-                <button
-                  onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-                  className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                  title="In-App Notifications"
-                >
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-bold text-white ring-2 ring-white shadow-xs">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </button>
-
-                {notifDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50">
-                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-emerald-600" />
-                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</span>
-                        {unreadCount > 0 && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                            {unreadCount} new
-                          </span>
-                        )}
-                      </div>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={async () => {
-                            if (user?.email) {
-                              await api.markAllNotificationsAsRead(user.email);
-                              setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-                            }
-                          }}
-                          className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
-                        >
-                          Mark all read
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                      {notifications.length === 0 ? (
-                        <div className="py-8 px-4 text-center">
-                          <p className="text-xs text-slate-400">No notifications at this time.</p>
-                        </div>
-                      ) : (
-                        notifications.map(n => (
-                          <div
-                            key={n.id}
-                            onClick={async () => {
-                              if (!n.read) {
-                                await api.markNotificationAsRead(n.id);
-                                setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
-                              }
-                              if (n.link) {
-                                setNotifDropdownOpen(false);
-                                navigate(n.link);
-                              }
-                            }}
-                            className={`p-3 text-left transition-colors cursor-pointer hover:bg-slate-50 flex items-start gap-3 ${!n.read ? 'bg-emerald-50/50' : ''}`}
-                          >
-                            <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${
-                              n.type === 'registration' ? 'bg-emerald-100 text-emerald-700' :
-                              n.type === 'certificate' ? 'bg-amber-100 text-amber-700' :
-                              n.type === 'event_update' ? 'bg-blue-100 text-blue-700' :
-                              'bg-slate-100 text-slate-700'
-                            }`}>
-                              {n.type === 'registration' && <Ticket className="w-3.5 h-3.5" />}
-                              {n.type === 'certificate' && <Award className="w-3.5 h-3.5" />}
-                              {n.type === 'event_update' && <Calendar className="w-3.5 h-3.5" />}
-                              {n.type === 'system' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-1">
-                                <p className={`text-xs ${!n.read ? 'font-bold text-slate-900' : 'font-medium text-slate-700'} truncate`}>
-                                  {n.title}
-                                </p>
-                                {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0"></span>}
-                              </div>
-                              <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
-                              <span className="text-[9px] text-slate-400 mt-1 block">
-                                {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
+              <button
+                onClick={() => {
+                  setNotifDropdownOpen(!notifDropdownOpen);
+                  if (mobileMenuOpen) setMobileMenuOpen(false);
+                }}
+                className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                title="In-App Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-bold text-white ring-2 ring-white shadow-xs">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 )}
-              </div>
+              </button>
             )}
 
             {isAuthenticated ? (
@@ -411,11 +334,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenDemoGuide }) => {
           </div>
 
           {/* Mobile menu and notifications */}
-          <div className="flex md:hidden items-center gap-2">
+          <div className="flex md:hidden items-center gap-1.5">
             {isAuthenticated && (
               <button
-                onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-                className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                onClick={() => {
+                  setNotifDropdownOpen(!notifDropdownOpen);
+                  if (mobileMenuOpen) setMobileMenuOpen(false);
+                }}
+                className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                 title="Notifications"
               >
                 <Bell className="w-5 h-5" />
@@ -427,8 +353,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenDemoGuide }) => {
               </button>
             )}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              onClick={() => {
+                setMobileMenuOpen(!mobileMenuOpen);
+                if (notifDropdownOpen) setNotifDropdownOpen(false);
+              }}
+              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -436,96 +366,276 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenDemoGuide }) => {
         </div>
       </div>
 
+      {/* Notifications Popover Dropdown (Mobile & Desktop Unified) */}
+      {notifDropdownOpen && (
+        <div
+          className="fixed inset-0 z-50 overflow-hidden sm:absolute sm:inset-auto sm:right-6 sm:top-14"
+          onClick={() => setNotifDropdownOpen(false)}
+        >
+          {/* Mobile Backdrop */}
+          <div className="fixed inset-0 bg-slate-900/40 sm:hidden backdrop-blur-xs" />
+
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative mx-3 mt-16 sm:mt-0 sm:mx-0 max-w-sm sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-10 animate-in fade-in slide-in-from-top-2 duration-150"
+          >
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
+              {unreadCount > 0 && (
+                <button
+                  onClick={async () => {
+                    if (user?.email) {
+                      await api.markAllNotificationsAsRead(user.email);
+                      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                    }
+                  }}
+                  className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+              {notifications.length === 0 ? (
+                <div className="py-8 px-4 text-center">
+                  <p className="text-xs text-slate-400">No notifications at this time.</p>
+                </div>
+              ) : (
+                notifications.map(n => (
+                  <div
+                    key={n.id}
+                    onClick={async () => {
+                      if (!n.read) {
+                        await api.markNotificationAsRead(n.id);
+                        setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
+                      }
+                      if (n.link) {
+                        setNotifDropdownOpen(false);
+                        navigate(n.link);
+                      }
+                    }}
+                    className={`p-3 text-left transition-colors cursor-pointer hover:bg-slate-50 flex items-start gap-3 ${!n.read ? 'bg-emerald-50/50' : ''}`}
+                  >
+                    <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${
+                      n.type === 'registration' ? 'bg-emerald-100 text-emerald-700' :
+                      n.type === 'certificate' ? 'bg-amber-100 text-amber-700' :
+                      n.type === 'event_update' ? 'bg-blue-100 text-blue-700' :
+                      'bg-slate-100 text-slate-700'
+                    }`}>
+                      {n.type === 'registration' && <Ticket className="w-3.5 h-3.5" />}
+                      {n.type === 'certificate' && <Award className="w-3.5 h-3.5" />}
+                      {n.type === 'event_update' && <Calendar className="w-3.5 h-3.5" />}
+                      {n.type === 'system' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className={`text-xs ${!n.read ? 'font-bold text-slate-900' : 'font-medium text-slate-700'} truncate`}>
+                          {n.title}
+                        </p>
+                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0"></span>}
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
+                      <span className="text-[9px] text-slate-400 mt-1 block">
+                        {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-5 space-y-2 shadow-lg">
-          <Link
-            to="/events"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
-          >
-            Explore Events
-          </Link>
-          <Link
-            to="/my-tickets"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
-          >
-            My Tickets
-          </Link>
-          <Link
-            to="/scanner"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-semibold text-emerald-700 bg-emerald-50"
-          >
-            QR Check-In Scanner
-          </Link>
-          {(role === 'organizer' || role === 'admin') && (
-            <>
-              <Link
-                to="/organizer/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-5 space-y-2.5 shadow-xl max-h-[85vh] overflow-y-auto">
+          {/* Mobile Persona Quick Switcher */}
+          <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                Active Test Persona
+              </span>
+              <span className="text-emerald-700 font-bold capitalize">{role}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+              <button
+                onClick={() => {
+                  handleRoleChange('organizer');
+                  setMobileMenuOpen(false);
+                }}
+                className={`py-1.5 px-2 rounded-lg font-semibold text-center transition-all ${
+                  role === 'organizer'
+                    ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
               >
-                Organizer Dashboard
-              </Link>
-              <Link
-                to="/organizer/events"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+                Organizer
+              </button>
+              <button
+                onClick={() => {
+                  handleRoleChange('volunteer');
+                  setMobileMenuOpen(false);
+                }}
+                className={`py-1.5 px-2 rounded-lg font-semibold text-center transition-all ${
+                  role === 'volunteer'
+                    ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
               >
-                Manage Events
-              </Link>
-              <Link
-                to="/organizer/attendance"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+                Volunteer
+              </button>
+              <button
+                onClick={() => {
+                  handleRoleChange('participant');
+                  setMobileMenuOpen(false);
+                }}
+                className={`py-1.5 px-2 rounded-lg font-semibold text-center transition-all ${
+                  role === 'participant'
+                    ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
               >
-                Attendance Management
-              </Link>
-              <Link
-                to="/organizer/create-event"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded-lg text-sm font-semibold text-emerald-700 bg-emerald-50"
-              >
-                + Create New Event
-              </Link>
-            </>
-          )}
-          <Link
-            to="/certificates"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
-          >
-            Certificates
-          </Link>
-          <Link
-            to="/verify-certificate"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-medium text-emerald-700 hover:bg-slate-100"
-          >
-            Verify Credential
-          </Link>
-          <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
-            <Link
-              to="/profile"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-semibold text-slate-800"
-            >
-              Profile ({user?.full_name})
-            </Link>
+                Participant
+              </button>
+            </div>
+          </div>
+
+          {/* Hackathon Demo Walkthrough Button on Mobile */}
+          {onOpenDemoGuide && (
             <button
               onClick={() => {
-                handleLogout();
                 setMobileMenuOpen(false);
+                onOpenDemoGuide();
               }}
-              className="text-xs font-semibold text-rose-600"
+              className="w-full py-2 px-3 rounded-xl bg-emerald-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs"
             >
-              Sign Out
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Interactive Demo Walkthrough</span>
             </button>
+          )}
+
+          <div className="space-y-1 pt-1">
+            <Link
+              to="/events"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+            >
+              Explore Events
+            </Link>
+            <Link
+              to="/my-tickets"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+            >
+              My Tickets
+            </Link>
+            <Link
+              to="/scanner"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-semibold text-emerald-700 bg-emerald-50"
+            >
+              QR Check-In Scanner
+            </Link>
+            {(role === 'organizer' || role === 'admin') && (
+              <>
+                <Link
+                  to="/organizer/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+                >
+                  Organizer Dashboard
+                </Link>
+                <Link
+                  to="/organizer/events"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+                >
+                  Manage Events
+                </Link>
+                <Link
+                  to="/organizer/attendance"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+                >
+                  Attendance Management
+                </Link>
+                <Link
+                  to="/organizer/create-event"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 rounded-lg text-sm font-semibold text-emerald-700 bg-emerald-50"
+                >
+                  + Create New Event
+                </Link>
+              </>
+            )}
+            <Link
+              to="/certificates"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100"
+            >
+              Certificates
+            </Link>
+            <Link
+              to="/verify-certificate"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-medium text-emerald-700 hover:bg-slate-100"
+            >
+              Verify Credential
+            </Link>
           </div>
+
+          {/* User Account / Auth Actions */}
+          {isAuthenticated ? (
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-xs font-semibold text-slate-800 flex items-center gap-2"
+              >
+                <div className="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold">
+                  {user?.full_name?.charAt(0) || 'U'}
+                </div>
+                <div className="truncate max-w-[150px]">
+                  <div className="font-bold truncate">{user?.full_name}</div>
+                  <div className="text-[10px] text-slate-400 capitalize">{role}</div>
+                </div>
+              </Link>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }}
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <div className="pt-3 border-t border-slate-200">
+              <Link
+                to="/auth"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign In / Create Account</span>
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </header>
   );
 };
+

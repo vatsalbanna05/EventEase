@@ -97,7 +97,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col">
       {/* Printable / Renderable Ticket Card Container */}
-      <div ref={ticketRef} className="p-6 bg-white flex flex-col md:flex-row gap-6 relative">
+      <div ref={ticketRef} className="p-4 sm:p-6 bg-white flex flex-col md:flex-row gap-5 sm:gap-6 relative">
         {/* Left / Main Details */}
         <div className="flex-1 space-y-4">
           <div className="flex items-center justify-between">
@@ -185,7 +185,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
         </div>
 
         {/* Right / QR & Ticket Token */}
-        <div className="flex flex-col items-center justify-center p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-center min-w-[180px]">
+        <div className="flex flex-col items-center justify-center p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-center w-full md:w-auto md:min-w-[180px]">
           <div className="bg-white p-2.5 rounded-xl shadow-xs border border-emerald-200/80 mb-2">
             <QRCodeSVG
               value={registration.ticket_token}
@@ -206,12 +206,12 @@ export const TicketCard: React.FC<TicketCardProps> = ({
       </div>
 
       {/* Ticket Footer Actions */}
-      <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="px-4 sm:px-6 py-3 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleDownloadPDF}
             disabled={isDownloading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs transition-colors disabled:opacity-50"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs transition-colors disabled:opacity-50"
           >
             {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
             <span>Download Pass (PDF)</span>
@@ -219,7 +219,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
 
           <button
             onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-medium border border-slate-300 transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-medium border border-slate-300 transition-colors"
           >
             <Printer className="w-3.5 h-3.5 text-slate-500" />
             <span>Print</span>
@@ -229,7 +229,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
           {registration.certificate_reference ? (
             <button
               onClick={() => onViewCertificate?.(registration.certificate_reference!)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-xs transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-xs transition-colors"
             >
               <Award className="w-3.5 h-3.5" />
               <span>View Certificate</span>
@@ -238,7 +238,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             <button
               onClick={() => onRequestCertificate(registration)}
               disabled={certificateRequest?.status === 'pending'}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold shadow-xs transition-colors ${
+              className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold shadow-xs transition-colors ${
                 certificateRequest?.status === 'pending'
                   ? 'bg-amber-100 text-amber-800 border border-amber-300 opacity-80 cursor-not-allowed'
                   : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300'
@@ -257,7 +257,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({
         {!isCheckedIn && !isCancelled && onCancel && (
           <button
             onClick={() => onCancel(registration.id)}
-            className="text-rose-600 hover:text-rose-700 font-medium transition-colors"
+            className="text-rose-600 hover:text-rose-700 font-medium transition-colors text-center sm:text-right py-1 sm:py-0"
           >
             Cancel Pass
           </button>

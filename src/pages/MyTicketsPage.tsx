@@ -346,8 +346,8 @@ export const MyTicketsPage: React.FC = () => {
 
       {/* Certificate Viewer Modal */}
       {previewCert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto">
-          <div className="relative bg-white rounded-3xl p-6 max-w-4xl w-full space-y-4 my-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto">
+          <div className="relative bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-6 max-w-4xl w-full space-y-4 my-auto max-h-[95vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-end">
               <button
                 onClick={() => setPreviewCert(null)}

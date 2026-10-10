@@ -128,10 +128,10 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-700 to-teal-800 p-6 text-white relative">
+        <div className="bg-gradient-to-r from-emerald-700 to-teal-800 p-4 sm:p-6 text-white relative shrink-0">
           <button
             onClick={handleClose}
             className="absolute top-4 right-4 p-1.5 rounded-lg text-emerald-100 hover:text-white hover:bg-emerald-600/50 transition-colors"
@@ -158,7 +158,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {registeredTicket ? (
             /* SUCCESS STATE WITH QR TICKET */
             <div className="text-center space-y-5">

@@ -112,10 +112,10 @@ export const EventsPage: React.FC = () => {
           </div>
 
           {/* Availability Filter */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
+          <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl sm:flex sm:items-center sm:gap-1.5">
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-lg text-center transition-all ${
                 statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -123,19 +123,19 @@ export const EventsPage: React.FC = () => {
             </button>
             <button
               onClick={() => setStatusFilter('available')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-lg text-center transition-all ${
                 statusFilter === 'available' ? 'bg-white text-emerald-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Available Spots
+              Available
             </button>
             <button
               onClick={() => setStatusFilter('full')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded-lg text-center transition-all ${
                 statusFilter === 'full' ? 'bg-white text-rose-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Fully Booked
+              Booked
             </button>
           </div>
         </div>

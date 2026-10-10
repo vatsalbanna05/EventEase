@@ -129,7 +129,7 @@ export const CreateEventPage: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
           {formError && (
             <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
